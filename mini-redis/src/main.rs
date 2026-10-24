@@ -1,3 +1,5 @@
+mod command;
+use command::Command;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 
@@ -23,7 +25,11 @@ async fn handle_client(socket: TcpStream) -> Result<(), Box<dyn std::error::Erro
     let mut lines = BufReader::new(reader).lines();
 
     while let Some(line) = lines.next_line().await? {
-        writer.write_all(format!("{line}\n").as_bytes()).await?;
+        let reply = match Command::parse(&line) {
+            Ok(cmd) => format!("parsed: {cmd:?}"),
+            Err(msg) => format!("ERR {msg}"),
+        };
+        writer.write_all(format!("{reply}\r\n").as_bytes()).await?;
     }
 
     println!("Client disconnected");
