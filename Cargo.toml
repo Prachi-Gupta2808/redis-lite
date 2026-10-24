@@ -1,0 +1,6 @@
+[workspace]
+resolver = "3"
+members = ["mini-redis","load-balancer"]
+
+[workspace.dependencies]
+tokio = {version = "1" , features = ["full"]}
