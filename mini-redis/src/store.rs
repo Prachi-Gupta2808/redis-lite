@@ -81,6 +81,14 @@ impl Store {
             None => false,
         }
     }
+
+    /// Remove every expired key & Returns how many were removed
+    pub fn purge_expired(&self) -> usize {
+        let mut data = self.data.lock().unwrap();
+        let before = data.len();
+        data.retain(|_, entry| !entry.is_expired());
+        before - data.len()
+    }
 }
 
 #[cfg(test)]
@@ -119,5 +127,14 @@ mod tests {
         assert_eq!(s.ttl("a"), -1);
         s.expire("a", 100);
         assert!((99..=100).contains(&s.ttl("a")));
+    }
+
+    #[test]
+    fn purge_removes_only_expired() {
+        let s = Store::new();
+        s.set("old".into(), "1".into(), Some(0));
+        s.set("keep".into(), "2".into(), None);
+        assert_eq!(s.purge_expired(), 1);
+        assert_eq!(s.get("keep"), Some("2".to_string()));
     }
 }

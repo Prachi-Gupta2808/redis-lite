@@ -5,6 +5,7 @@ use command::Command;
 use store::Store;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -12,6 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("mini-redis listening on 127.0.0.1:6380");
 
     let store = Store::new();
+    spawn_sweeper(store.clone());
 
     loop {
         let (socket, addr) = listener.accept().await?;
@@ -58,4 +60,17 @@ fn execute(cmd: Command, store: &Store) -> String {
         Command::Ttl { key } => store.ttl(&key).to_string(),
         Command::Expire { key, seconds } => i32::from(store.expire(&key, seconds)).to_string(),
     }
+}
+
+fn spawn_sweeper(store: Store) {
+    tokio::spawn(async move {
+        let mut ticker = tokio::time::interval(Duration::from_secs(1));
+        loop {
+            ticker.tick().await;
+            let removed = store.purge_expired();
+            if removed > 0 {
+                println!("Sweeper removed {removed} expired key(s)");
+            }
+        }
+    });
 }
