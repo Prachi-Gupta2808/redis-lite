@@ -1,7 +1,7 @@
 mod command;
 mod store;
 
-use command::Command;
+use command::{Command, CommandError};
 use store::Store;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
@@ -38,6 +38,7 @@ async fn handle_client(
     while let Some(line) = lines.next_line().await? {
         let reply = match Command::parse(&line) {
             Ok(cmd) => execute(cmd, &store),
+            Err(CommandError::Empty) => continue,
             Err(msg) => format!("ERR {msg}"),
         };
         writer.write_all(format!("{reply}\r\n").as_bytes()).await?;
