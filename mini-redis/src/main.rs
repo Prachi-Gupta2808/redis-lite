@@ -9,8 +9,17 @@ use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let listener = TcpListener::bind("127.0.0.1:6380").await?;
-    println!("mini-redis listening on 127.0.0.1:6380");
+    let port = match parse_port() {
+        Ok(p) => p,
+        Err(msg) => {
+            eprintln!("{msg}");
+            std::process::exit(1);
+        }
+    };
+
+    let addr = format!("127.0.0.1:{port}");
+    let listener = TcpListener::bind(&addr).await?;
+    println!("mini-redis listening on {addr}");
 
     let store = Store::new();
     spawn_sweeper(store.clone());
@@ -74,4 +83,13 @@ fn spawn_sweeper(store: Store) {
             }
         }
     });
+}
+
+fn parse_port() -> Result<u16, String> {
+    match std::env::args().nth(1) {
+        None => Ok(6380),
+        Some(arg) => arg
+            .parse::<u16>()
+            .map_err(|_| format!("invalid port '{arg}': expected a number from 0 to 65535")),
+    }
 }
